@@ -1,0 +1,11 @@
+user-service:
+  url: "http://localhost:8081" # URL вашего User Service
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
