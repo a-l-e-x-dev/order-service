@@ -47,6 +47,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_order_items_item_id
 
-        - createIndex: {tableName: orders, indexName: idx_orders_user_email, columns: [{column: {name: user_email}}]}
+        - createIndex: {tableName: orders, indexName: idx_orders_user_id, columns: [{column: {name: user_id}}]}
         - createIndex: {tableName: order_items, indexName: idx_order_items_order_id, columns: [{column: {name: order_id}}]}
         - createIndex: {tableName: order_items, indexName: idx_order_items_item_id, columns: [{column: {name: item_id}}]}
