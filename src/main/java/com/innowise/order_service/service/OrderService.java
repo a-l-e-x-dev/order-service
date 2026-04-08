@@ -37,7 +37,7 @@ public class OrderService {
     public OrderWithUserResponse createOrder(OrderRequest request) {
         Order order = new Order();
         order.setUserId(request.userId());
-        order.setStatus("CREATED");
+        order.setStatus(OrderStatus.CREATED);
 
         BigDecimal totalPrice = BigDecimal.ZERO;
 
