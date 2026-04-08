@@ -1,5 +1,7 @@
 package com.innowise.order_service.dto;
 
+import com.innowise.order_service.enums.OrderStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -7,7 +9,7 @@ import java.util.List;
 public record OrderResponse(
         Long id,
         Long userId,
-        String status,
+        OrderStatus status,
         BigDecimal totalPrice,
         LocalDateTime createdAt,
         List<OrderItemResponse> items
