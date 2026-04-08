@@ -54,6 +54,7 @@ class OrderIntegrationTest {
     @BeforeEach
     void setUp() {
         Item item = new Item();
+        item.setName("Test Smartphone");
         item.setPrice(BigDecimal.valueOf(150.0));
         savedItem = itemRepository.save(item);
 
