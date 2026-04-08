@@ -49,7 +49,7 @@ class OrderServiceTest {
         UserDto userDto = new UserDto(1L, "test@mail.com", "John", "Doe");
         OrderResponse orderResponse = new OrderResponse(1L, 1L, OrderStatus.CREATED, BigDecimal.valueOf(200), null, null);
 
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.findAllById(anyList())).thenReturn(List.of(item));
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderResponse);
         when(userServiceClient.getUserById(1L)).thenReturn(userDto);

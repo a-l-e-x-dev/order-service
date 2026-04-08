@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,18 +41,29 @@ public class OrderService {
         order.setUserId(request.userId());
         order.setStatus(OrderStatus.CREATED);
 
+        List<Long> itemIds = request.items().stream()
+                .map(OrderRequest.OrderItemRequest::itemId)
+                .toList();
+
+        Map<Long, Item> itemMap = itemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(Item::getId, item -> item));
+
         BigDecimal totalPrice = BigDecimal.ZERO;
 
         for (OrderRequest.OrderItemRequest itemReq : request.items()) {
-            Item item = itemRepository.findById(itemReq.itemId())
-                    .orElseThrow(() -> new EntityNotFoundException("Item not found"));
+            Item item = itemMap.get(itemReq.itemId());
+
+            if (item == null) {
+                throw new EntityNotFoundException("Item not found with id: " + itemReq.itemId());
+            }
+
+            BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity()));
+            totalPrice = totalPrice.add(itemTotal);
 
             OrderItem orderItem = new OrderItem();
             orderItem.setItem(item);
             orderItem.setQuantity(itemReq.quantity());
             order.addItem(orderItem);
-
-            totalPrice = totalPrice.add(item.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity())));
         }
 
         order.setTotalPrice(totalPrice);

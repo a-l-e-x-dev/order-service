@@ -45,7 +45,7 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/user/{email}")
+    @GetMapping("/user/{userId}")
     public ResponseEntity<Page<OrderWithUserResponse>> getOrdersByUserId(@PathVariable Long userId, Pageable pageable) {
         Page<OrderWithUserResponse> response = orderService.getOrdersByUserId(userId, pageable);
         return ResponseEntity.ok(response);
