@@ -3,6 +3,7 @@ package com.innowise.order_service.service;
 import com.innowise.order_service.client.UserServiceClient;
 import com.innowise.order_service.dto.*;
 import com.innowise.order_service.entity.*;
+import com.innowise.order_service.enums.OrderStatus;
 import com.innowise.order_service.mapper.OrderMapper;
 import com.innowise.order_service.repository.*;
 import jakarta.persistence.EntityNotFoundException;
@@ -35,28 +36,26 @@ class OrderServiceTest {
 
     @Test
     void createOrder_Success() {
-        // Arrange
-        OrderRequest request = new OrderRequest("test@mail.com", List.of(new OrderRequest.OrderItemRequest(1L, 2)));
+        OrderRequest request = new OrderRequest(1L, List.of(new OrderRequest.OrderItemRequest(1L, 2)));
         Item item = new Item();
         item.setId(1L);
         item.setPrice(BigDecimal.valueOf(100));
 
         Order savedOrder = new Order();
         savedOrder.setId(1L);
-        savedOrder.setUserEmail("test@mail.com");
+        savedOrder.setUserId(1L);
+        savedOrder.setStatus(OrderStatus.CREATED);
 
         UserDto userDto = new UserDto(1L, "test@mail.com", "John", "Doe");
-        OrderResponse orderResponse = new OrderResponse(1L, "test@mail.com", "CREATED", BigDecimal.valueOf(200), null, null);
+        OrderResponse orderResponse = new OrderResponse(1L, 1L, OrderStatus.CREATED, BigDecimal.valueOf(200), null, null);
 
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderResponse);
-        when(userServiceClient.getUserByEmail("test@mail.com")).thenReturn(userDto);
+        when(userServiceClient.getUserById(1L)).thenReturn(userDto);
 
-        // Act
         OrderWithUserResponse result = orderService.createOrder(request);
 
-        // Assert
         assertNotNull(result);
         assertEquals(BigDecimal.valueOf(200), result.order().totalPrice());
         assertEquals("John", result.user().firstName());
@@ -66,11 +65,12 @@ class OrderServiceTest {
     @Test
     void getOrderById_Success() {
         Order order = new Order();
-        order.setUserEmail("test@mail.com");
+        order.setUserId(1L);
+        order.setStatus(OrderStatus.CREATED);
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderMapper.toDto(order)).thenReturn(new OrderResponse(1L, "test@mail.com", "CREATED", BigDecimal.TEN, null, null));
-        when(userServiceClient.getUserByEmail("test@mail.com")).thenReturn(new UserDto(1L, "test@mail.com", "John", "Doe"));
+        when(orderMapper.toDto(order)).thenReturn(new OrderResponse(1L, 1L, OrderStatus.CREATED, BigDecimal.TEN, null, null));
+        when(userServiceClient.getUserById(1L)).thenReturn(new UserDto(1L, "test@mail.com", "John", "Doe"));
 
         OrderWithUserResponse result = orderService.getOrderById(1L);
 
@@ -85,11 +85,11 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrdersByUserEmail_Success() {
+    void getOrdersByUserId_Success() {
         Page<Order> page = new PageImpl<>(List.of(new Order()));
-        when(orderRepository.findAllByUserEmail(eq("test@mail.com"), any(PageRequest.class))).thenReturn(page);
+        when(orderRepository.findAllByUserId(eq(1L), any(PageRequest.class))).thenReturn(page);
 
-        Page<OrderWithUserResponse> result = orderService.getOrdersByUserEmail("test@mail.com", PageRequest.of(0, 10));
+        Page<OrderWithUserResponse> result = orderService.getOrdersByUserId(1L, PageRequest.of(0, 10));
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
@@ -98,13 +98,13 @@ class OrderServiceTest {
     @Test
     void updateOrderStatus_Success() {
         Order order = new Order();
-        order.setStatus("CREATED");
+        order.setStatus(OrderStatus.CREATED);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
 
-        orderService.updateOrderStatus(1L, "SHIPPED");
+        orderService.updateOrderStatus(1L, OrderStatus.SHIPPED);
 
-        assertEquals("SHIPPED", order.getStatus());
+        assertEquals(OrderStatus.SHIPPED, order.getStatus());
         verify(orderRepository).save(order);
     }
 

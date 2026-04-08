@@ -1,102 +1,129 @@
 package com.innowise.order_service;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.innowise.order_service.client.UserServiceClient;
 import com.innowise.order_service.dto.OrderRequest;
+import com.innowise.order_service.dto.OrderStatusRequest;
+import com.innowise.order_service.dto.UserDto;
 import com.innowise.order_service.entity.Item;
+import com.innowise.order_service.entity.Order;
+import com.innowise.order_service.enums.OrderStatus;
 import com.innowise.order_service.repository.ItemRepository;
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import com.innowise.order_service.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class OrderIntegrationTest {
 
-    @LocalServerPort
-    private Integer port;
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     @Autowired
     private ItemRepository itemRepository;
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("test_db")
-            .withUsername("test")
-            .withPassword("test");
+    @MockBean
+    private UserServiceClient userServiceClient;
 
-    static WireMockServer wireMockServer;
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("user-service.url", () -> wireMockServer.baseUrl());
-    }
-
-    @BeforeAll
-    static void startWireMock() {
-        wireMockServer = new WireMockServer(wireMockConfig().dynamicPort());
-        wireMockServer.start();
-    }
-
-    @AfterAll
-    static void stopWireMock() {
-        wireMockServer.stop();
-    }
+    private Item savedItem;
 
     @BeforeEach
     void setUp() {
-        RestAssured.port = port;
+        Item item = new Item();
+        item.setPrice(BigDecimal.valueOf(150.0));
+        savedItem = itemRepository.save(item);
 
-        if (itemRepository.count() == 0) {
-            Item item = new Item();
-            item.setName("Test Laptop");
-            item.setPrice(BigDecimal.valueOf(1000.00));
-            itemRepository.save(item);
-        }
+        UserDto mockUser = new UserDto(1L, "test@mail.com", "John", "Doe");
+        when(userServiceClient.getUserById(anyLong())).thenReturn(mockUser);
     }
 
     @Test
-    void shouldCreateOrderAndReturnCombinedResponse() {
-        wireMockServer.stubFor(WireMock.get(WireMock.urlPathEqualTo("/api/v1/users/by-email"))
-                .withQueryParam("email", WireMock.equalTo("test@mail.com"))
-                .willReturn(WireMock.aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withStatus(200)
-                        .withBody("{ \"id\": 1, \"email\": \"test@mail.com\", \"firstName\": \"Integration\", \"lastName\": \"Test\" }")));
+    void shouldCreateOrderAndReturnCombinedResponse() throws Exception {
+        OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest(savedItem.getId(), 2);
+        OrderRequest orderRequest = new OrderRequest(1L, List.of(itemRequest));
 
-        OrderRequest request = new OrderRequest("test@mail.com",
-                List.of(new OrderRequest.OrderItemRequest(1L, 2)));
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.order.userId").value(1))
+                .andExpect(jsonPath("$.order.status").value(OrderStatus.CREATED.name()))
+                .andExpect(jsonPath("$.order.totalPrice").value(300.0))
+                .andExpect(jsonPath("$.user.firstName").value("John"));
+    }
 
-        given()
-                .contentType(ContentType.JSON)
-                .body(request)
-                .when()
-                .post("/api/v1/orders")
-                .then()
-                .statusCode(201) // Проверяем статус 201 Created
-                .body("order.userEmail", equalTo("test@mail.com"))
-                .body("order.totalPrice", equalTo(2000.0f)) // 1000 * 2
-                .body("user.firstName", equalTo("Integration")); // Проверяем, что данные пришли из WireMock
+    @Test
+    void shouldGetOrderById() throws Exception {
+        Order order = new Order();
+        order.setUserId(1L);
+        order.setStatus(OrderStatus.CREATED);
+        order = orderRepository.save(order);
+
+        mockMvc.perform(get("/api/v1/orders/{id}", order.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.order.userId").value(1L))
+                .andExpect(jsonPath("$.user.email").value("test@mail.com"));
+    }
+
+    @Test
+    void shouldReturn404WhenOrderNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/orders/{id}", 999L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldUpdateOrderStatus() throws Exception {
+        Order order = new Order();
+        order.setUserId(1L);
+        order.setStatus(OrderStatus.CREATED);
+        order = orderRepository.save(order);
+
+        OrderStatusRequest statusRequest = new OrderStatusRequest(OrderStatus.SHIPPED);
+
+        mockMvc.perform(patch("/api/v1/orders/{id}/status", order.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.order.status").value(OrderStatus.SHIPPED.name()));
+
+        Order updatedOrder = orderRepository.findById(order.getId()).orElseThrow();
+        assertEquals(OrderStatus.SHIPPED, updatedOrder.getStatus());
+    }
+
+    @Test
+    void shouldDeleteOrder() throws Exception {
+        Order order = new Order();
+        order.setUserId(1L);
+        order.setStatus(OrderStatus.CREATED);
+        order = orderRepository.save(order);
+
+        mockMvc.perform(delete("/api/v1/orders/{id}", order.getId()))
+                .andExpect(status().isOk());
+
+        assertEquals(0, orderRepository.count());
     }
 }

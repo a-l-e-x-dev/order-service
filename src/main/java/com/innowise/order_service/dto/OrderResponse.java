@@ -6,7 +6,7 @@ import java.util.List;
 
 public record OrderResponse(
         Long id,
-        String userEmail,
+        Long userId,
         String status,
         BigDecimal totalPrice,
         LocalDateTime createdAt,

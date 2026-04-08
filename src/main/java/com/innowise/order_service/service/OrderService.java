@@ -8,6 +8,7 @@ import com.innowise.order_service.dto.UserDto;
 import com.innowise.order_service.entity.Item;
 import com.innowise.order_service.entity.Order;
 import com.innowise.order_service.entity.OrderItem;
+import com.innowise.order_service.enums.OrderStatus;
 import com.innowise.order_service.mapper.OrderMapper;
 import com.innowise.order_service.repository.ItemRepository;
 import com.innowise.order_service.repository.OrderRepository;
@@ -35,7 +36,7 @@ public class OrderService {
     @Transactional
     public OrderWithUserResponse createOrder(OrderRequest request) {
         Order order = new Order();
-        order.setUserEmail(request.userEmail()); // Заменили userId на userEmail
+        order.setUserId(request.userId());
         order.setStatus("CREATED");
 
         BigDecimal totalPrice = BigDecimal.ZERO;
@@ -72,20 +73,20 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrderWithUserResponse> getOrdersByUserEmail(String email, Pageable pageable) {
-        return orderRepository.findAllByUserEmail(email, pageable)
+    public Page<OrderWithUserResponse> getOrdersByUserId(Long userId, Pageable pageable) {
+        return orderRepository.findAllByUserId(userId, pageable)
                 .map(this::buildCombinedResponse);
     }
 
-    @Transactional // Используем транзакцию для UPDATE
-    public OrderWithUserResponse updateOrderStatus(Long id, String newStatus) {
+    @Transactional
+    public OrderWithUserResponse updateOrderStatus(Long id, OrderStatus newStatus) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Order not found: " + id));
         order.setStatus(newStatus);
         return buildCombinedResponse(orderRepository.save(order));
     }
 
-    @Transactional // Используем транзакцию для DELETE
+    @Transactional
     public void deleteOrder(Long id) {
         if (!orderRepository.existsById(id)) {
             throw new EntityNotFoundException("Order not found: " + id);
@@ -93,12 +94,10 @@ public class OrderService {
         orderRepository.deleteById(id);
     }
 
-    // Вспомогательный метод: собирает финальный DTO из БД и внешнего микросервиса
+
     private OrderWithUserResponse buildCombinedResponse(Order order) {
         OrderResponse orderDto = orderMapper.toDto(order);
-        // Вызов User Service через Feign Client с Circuit Breaker
-        UserDto userDto = userServiceClient.getUserByEmail(order.getUserEmail());
-
+        UserDto userDto = userServiceClient.getUserById(order.getUserId());
         return new OrderWithUserResponse(orderDto, userDto);
     }
 }

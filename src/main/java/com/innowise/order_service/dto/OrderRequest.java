@@ -6,9 +6,7 @@ import jakarta.validation.constraints.*;
 import java.util.List;
 
 public record OrderRequest(
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        String userEmail,
+        Long userId,
         @NotEmpty(message = "Order must contain at least one item")
         @Valid
         List<OrderItemRequest> items
