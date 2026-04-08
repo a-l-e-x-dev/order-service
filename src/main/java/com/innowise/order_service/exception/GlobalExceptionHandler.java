@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEntityNotFoundException(EntityNotFoundException ex, HttpServletRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
-                HttpStatus.NOT_FOUND.value(), // 404
+                HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
                 request.getRequestURI()
         );
@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(), // 400
+                HttpStatus.BAD_REQUEST.value(),
                 "Validation failed",
                 validationErrors
         );
@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(
                 LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(), // 500
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "An unexpected error occurred",
                 ex.getMessage()
         );
