@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -80,15 +81,43 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrderWithUserResponse> getOrders(LocalDateTime startDate, LocalDateTime endDate, List<String> statuses, Pageable pageable) {
-        return orderRepository.findAll(OrderSpecification.filterByDateAndStatus(startDate, endDate, statuses), pageable)
-                .map(this::buildCombinedResponse);
+    public Page<OrderWithUserResponse> getOrders(LocalDateTime startDate, LocalDateTime endDate, List<OrderStatus> statuses, Pageable pageable) {
+        Page<Order> orders = orderRepository.findAll(OrderSpecification.filterByDateAndStatus(startDate, endDate, statuses), pageable);
+
+        if (orders.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        Set<Long> userIds = orders.stream()
+                .map(Order::getUserId)
+                .collect(Collectors.toSet());
+
+        List<UserDto> users = userServiceClient.getUsersByIds(userIds);
+
+        Map<Long, UserDto> userMap = users.stream()
+                .collect(Collectors.toMap(UserDto::id, user -> user));
+
+        return orders.map(order -> {
+            OrderResponse orderDto = orderMapper.toDto(order);
+            UserDto userDto = userMap.get(order.getUserId());
+            return new OrderWithUserResponse(orderDto, userDto);
+        });
     }
 
     @Transactional(readOnly = true)
     public Page<OrderWithUserResponse> getOrdersByUserId(Long userId, Pageable pageable) {
-        return orderRepository.findAllByUserId(userId, pageable)
-                .map(this::buildCombinedResponse);
+        Page<Order> orders = orderRepository.findAllByUserId(userId, pageable);
+
+        if (orders.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        UserDto userDto = userServiceClient.getUserById(userId);
+
+        return orders.map(order -> {
+            OrderResponse orderDto = orderMapper.toDto(order);
+            return new OrderWithUserResponse(orderDto, userDto);
+        });
     }
 
     @Transactional
@@ -106,7 +135,6 @@ public class OrderService {
         }
         orderRepository.deleteById(id);
     }
-
 
     private OrderWithUserResponse buildCombinedResponse(Order order) {
         OrderResponse orderDto = orderMapper.toDto(order);
