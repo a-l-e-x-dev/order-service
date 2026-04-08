@@ -70,7 +70,7 @@ class OrderIntegrationTest {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.order.userId").value(1))
                 .andExpect(jsonPath("$.order.status").value(OrderStatus.CREATED.name()))
                 .andExpect(jsonPath("$.order.totalPrice").value(300.0))
@@ -82,6 +82,7 @@ class OrderIntegrationTest {
         Order order = new Order();
         order.setUserId(1L);
         order.setStatus(OrderStatus.CREATED);
+        order.setTotalPrice(BigDecimal.valueOf(300.0));
         order = orderRepository.save(order);
 
         mockMvc.perform(get("/api/v1/orders/{id}", order.getId()))
@@ -101,6 +102,7 @@ class OrderIntegrationTest {
         Order order = new Order();
         order.setUserId(1L);
         order.setStatus(OrderStatus.CREATED);
+        order.setTotalPrice(BigDecimal.valueOf(300.0));
         order = orderRepository.save(order);
 
         OrderStatusRequest statusRequest = new OrderStatusRequest(OrderStatus.SHIPPED);
@@ -120,6 +122,7 @@ class OrderIntegrationTest {
         Order order = new Order();
         order.setUserId(1L);
         order.setStatus(OrderStatus.CREATED);
+        order.setTotalPrice(BigDecimal.valueOf(300.0));
         order = orderRepository.save(order);
 
         mockMvc.perform(delete("/api/v1/orders/{id}", order.getId()))
