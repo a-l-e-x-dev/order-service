@@ -1,6 +1,7 @@
 package com.innowise.order_service.repository;
 
 import com.innowise.order_service.entity.Order;
+import com.innowise.order_service.enums.OrderStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -12,7 +13,7 @@ public class OrderSpecification {
     public static Specification<Order> filterByDateAndStatus(
             LocalDateTime startDate,
             LocalDateTime endDate,
-            List<String> statuses) {
+            List<OrderStatus> statuses) {
 
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();

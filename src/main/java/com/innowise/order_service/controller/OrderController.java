@@ -3,6 +3,7 @@ package com.innowise.order_service.controller;
 import com.innowise.order_service.dto.OrderRequest;
 import com.innowise.order_service.dto.OrderStatusRequest;
 import com.innowise.order_service.dto.OrderWithUserResponse;
+import com.innowise.order_service.enums.OrderStatus;
 import com.innowise.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,7 @@ public class OrderController {
     public ResponseEntity<Page<OrderWithUserResponse>> getOrders(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) List<String> statuses,
+            @RequestParam(required = false) List<OrderStatus> statuses,
             Pageable pageable) {
         Page<OrderWithUserResponse> response = orderService.getOrders(startDate, endDate, statuses, pageable);
         return ResponseEntity.ok(response);
