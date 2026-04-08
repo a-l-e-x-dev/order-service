@@ -126,7 +126,7 @@ class OrderIntegrationTest {
         order = orderRepository.save(order);
 
         mockMvc.perform(delete("/api/v1/orders/{id}", order.getId()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         assertEquals(0, orderRepository.count());
     }
