@@ -1,0 +1,14 @@
+server:
+  port: 8082
+
+user-service:
+  url: "http://localhost:8081"
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
