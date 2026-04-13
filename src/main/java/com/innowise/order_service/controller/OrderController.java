@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,18 +26,24 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<OrderWithUserResponse> createOrder(@Valid @RequestBody OrderRequest request) {
-        OrderWithUserResponse response = orderService.createOrder(request);
+    @PreAuthorize("hasAnyAuthority('ROLE_USER', 'ROLE_ADMIN')")
+    public ResponseEntity<OrderWithUserResponse> createOrder(
+            @Valid @RequestBody OrderRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        Long currentUserId = (Long) authentication.getPrincipal();
+        OrderWithUserResponse response = orderService.createOrder(currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<OrderWithUserResponse> getOrderById(@PathVariable Long id) {
         OrderWithUserResponse response = orderService.getOrderById(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Page<OrderWithUserResponse>> getOrders(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
@@ -47,12 +54,14 @@ public class OrderController {
     }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_USER', 'ROLE_ADMIN')")
     public ResponseEntity<Page<OrderWithUserResponse>> getOrdersByUserId(@PathVariable Long userId, Pageable pageable) {
         Page<OrderWithUserResponse> response = orderService.getOrdersByUserId(userId, pageable);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<OrderWithUserResponse> updateOrderStatus(
             @PathVariable Long id,
             @RequestBody OrderStatusRequest request) {
@@ -60,6 +69,7 @@ public class OrderController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
         orderService.deleteOrder(id);
         return ResponseEntity.noContent().build();

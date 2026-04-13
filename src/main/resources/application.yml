@@ -12,3 +12,6 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
+
+jwt:
+  secret: "NDQ1Mjc1Mzg1OTU1NjQ1MzY1NDQxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTA"
