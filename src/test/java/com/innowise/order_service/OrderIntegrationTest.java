@@ -17,6 +17,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -67,8 +70,8 @@ class OrderIntegrationTest {
         OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest(savedItem.getId(), 2);
         OrderRequest orderRequest = new OrderRequest(1L, List.of(itemRequest));
 
-        mockMvc.perform(post("/api/v1/orders")
-                        .contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/orders").with(authentication(getMockAuth()))
+                .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.order.userId").value(1))
@@ -85,7 +88,7 @@ class OrderIntegrationTest {
         order.setTotalPrice(BigDecimal.valueOf(300.0));
         order = orderRepository.save(order);
 
-        mockMvc.perform(get("/api/v1/orders/{id}", order.getId()))
+        mockMvc.perform(get("/api/v1/orders/{id}", order.getId()).with(authentication(getMockAuth())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.order.userId").value(1L))
                 .andExpect(jsonPath("$.user.email").value("test@mail.com"));
@@ -93,7 +96,7 @@ class OrderIntegrationTest {
 
     @Test
     void shouldReturn404WhenOrderNotFound() throws Exception {
-        mockMvc.perform(get("/api/v1/orders/{id}", 999L))
+        mockMvc.perform(get("/api/v1/orders/{id}", 999L).with(authentication(getMockAuth())))
                 .andExpect(status().isNotFound());
     }
 
@@ -107,7 +110,7 @@ class OrderIntegrationTest {
 
         OrderStatusRequest statusRequest = new OrderStatusRequest(OrderStatus.SHIPPED);
 
-        mockMvc.perform(patch("/api/v1/orders/{id}/status", order.getId())
+        mockMvc.perform(patch("/api/v1/orders/{id}/status", order.getId()).with(authentication(getMockAuth()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(statusRequest)))
                 .andExpect(status().isOk())
@@ -125,9 +128,17 @@ class OrderIntegrationTest {
         order.setTotalPrice(BigDecimal.valueOf(300.0));
         order = orderRepository.save(order);
 
-        mockMvc.perform(delete("/api/v1/orders/{id}", order.getId()))
+        mockMvc.perform(delete("/api/v1/orders/{id}", order.getId()).with(authentication(getMockAuth())))
                 .andExpect(status().isNoContent());
 
         assertEquals(0, orderRepository.count());
+    }
+
+    private UsernamePasswordAuthenticationToken getMockAuth() {
+        return new UsernamePasswordAuthenticationToken(
+                1L,
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))
+        );
     }
 }

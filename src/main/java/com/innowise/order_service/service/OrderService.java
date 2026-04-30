@@ -37,9 +37,9 @@ public class OrderService {
     private final OrderMapper orderMapper;
 
     @Transactional
-    public OrderWithUserResponse createOrder(OrderRequest request) {
+    public OrderWithUserResponse createOrder(Long currentUserId, OrderRequest request) {
         Order order = new Order();
-        order.setUserId(request.userId());
+        order.setUserId(currentUserId);
         order.setStatus(OrderStatus.CREATED);
 
         List<Long> itemIds = request.items().stream()
