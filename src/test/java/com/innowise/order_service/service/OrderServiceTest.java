@@ -27,12 +27,17 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-    @Mock private OrderRepository orderRepository;
-    @Mock private ItemRepository itemRepository;
-    @Mock private UserServiceClient userServiceClient;
-    @Mock private OrderMapper orderMapper;
+    @Mock
+    private OrderRepository orderRepository;
+    @Mock
+    private ItemRepository itemRepository;
+    @Mock
+    private UserServiceClient userServiceClient;
+    @Mock
+    private OrderMapper orderMapper;
 
-    @InjectMocks private OrderService orderService;
+    @InjectMocks
+    private OrderService orderService;
 
     @Test
     void createOrder_Success() {
@@ -54,7 +59,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderResponse);
         when(userServiceClient.getUserById(1L)).thenReturn(userDto);
 
-        OrderWithUserResponse result = orderService.createOrder(request);
+        OrderWithUserResponse result = orderService.createOrder(1L, request);
 
         assertNotNull(result);
         assertEquals(BigDecimal.valueOf(200), result.order().totalPrice());
